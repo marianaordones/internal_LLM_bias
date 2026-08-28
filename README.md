@@ -44,7 +44,6 @@ data/probe_checkpoints/controlling_probe/
 data/probe_checkpoints/reading_probe/
 ```
 
-Run all commands from the repository root.
 
 ## Experiments
 
@@ -88,13 +87,6 @@ python experiments/inferred_gender_names_opinionqa.py \
   --out results/inferred_gender_names_full.csv
 ```
 
-For a small validation run, add:
-
-```bash
---limit 1 --name-limit 1
-```
-
-All runners support `--dry-run` for checking paths and CSV generation without loading the model.
 
 ## Analysis
 
