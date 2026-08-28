@@ -38,17 +38,17 @@ def load_steer_vectors(probe_dir, attribute, from_idx, to_idx, device):
     return vectors
 
 
-def make_hook(vector):
+def make_hook(vec):
     import torch
-
     def hook(module, inputs, output):
-        # Llama decoder layers return hidden states as the first tuple item.
-        hidden = output[0]
-        hidden[:, -1, :] = (
-            hidden[:, -1, :].to(torch.float32) + vector
-        ).to(hidden.dtype)
+        h = output[0] if isinstance(output, tuple) else output
+        if h.dim() == 3:
+            h[:, -1, :] = (h[:, -1, :].to(torch.float32) + vec).to(h.dtype)
+        elif h.dim() == 2:
+            h[-1, :] = (h[-1, :].to(torch.float32) + vec).to(h.dtype)
+        else:
+            raise RuntimeError(f"formato inesperado: {tuple(h.shape)}")
         return output
-
     return hook
 
 
