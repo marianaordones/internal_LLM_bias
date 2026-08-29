@@ -97,6 +97,12 @@ def _read_jsonl(path: Path):
         return [json.loads(line) for line in stream if line.strip()]
 
 
+def _is_refusal_option(option) -> bool:
+    """Identify SubPOP's administrative refusal choice regardless of position."""
+    normalized = " ".join(str(option).strip().lower().split())
+    return normalized == "refused" or normalized.startswith("refused ")
+
+
 def _load_rows(dataset_id: str, split: str, dataset_file: Path | None):
     if dataset_file is not None:
         return _read_jsonl(dataset_file)
@@ -145,14 +151,16 @@ def load_subpop_questions(
         qkey = str(row["qkey"])
         source_split = str(row.get("_subpop_source_split", split))
         record_key = (source_split, qkey)
-        options = list(row["options"])
-        if options and options[-1].strip().lower() == "refused":
-            options = options[:-1]
+        raw_options = list(row["options"])
+        # SubPOP excludes refusal from `responses`, but some survey records do
+        # not place the refusal choice at the end of the options list.
+        options = [option for option in raw_options if not _is_refusal_option(option)]
         responses = [float(value) for value in row["responses"]]
         if len(responses) != len(options):
             raise ValueError(
-                f"SubPOP {qkey}/{key} has {len(options)} options but "
-                f"{len(responses)} response probabilities."
+                f"SubPOP {qkey}/{key} has {len(raw_options)} raw options, "
+                f"{len(options)} non-refusal options, and {len(responses)} response "
+                f"probabilities. Raw options: {raw_options!r}"
             )
         question = {
             "qkey": qkey,
