@@ -98,22 +98,42 @@ def _read_jsonl(path: Path):
         return [json.loads(line) for line in stream if line.strip()]
 
 
+# Refusal / "don't know" / "no answer" markers. These are used ONLY to sanity
+# check the trailing options that positional alignment against `responses`
+# drops -- they never decide the alignment itself (see load_subpop_questions).
+_REFUSAL_SUBSTRINGS = (
+    "refus",        # refused / refuse
+    "don't know",
+    "dont know",
+    "do not know",
+    "no answer",
+    "no response",
+    "not sure",
+    "no opinion",
+    "can't choose",
+    "cant choose",
+    "cannot choose",
+    "skipped",
+    "declined",
+)
+_REFUSAL_TOKEN_SETS = (
+    {"dk"}, {"na"}, {"nan"}, {"ref"},
+    {"dk", "na"}, {"dk", "ref"}, {"dk", "no"}, {"dont", "know"},
+)
+
+
 def _is_refusal_option(option) -> bool:
-    """Identify SubPOP's administrative refusal choice regardless of position."""
-    normalized = " ".join(str(option).strip().lower().split())
-    words = " ".join(re.sub(r"[^a-z0-9]+", " ", normalized).split())
-    return (
-        normalized == "refused"
-        or normalized.startswith("refused ")
-        or words in {
-            "dk ref",
-            "dk refused",
-            "don t know ref",
-            "don t know refused",
-            "dont know ref",
-            "dont know refused",
-        }
-    )
+    """Heuristic: does this option read as a Refused / Don't-know / No-answer
+    choice? Used ONLY to sanity-check the trailing options that positional
+    alignment against `responses` drops -- never to decide the alignment.
+    """
+    text = " ".join(str(option).strip().lower().split())
+    if not text:
+        return True
+    if any(sub in text for sub in _REFUSAL_SUBSTRINGS):
+        return True
+    tokens = set(re.sub(r"[^a-z0-9]+", " ", text).split())
+    return any(tokens == marker for marker in _REFUSAL_TOKEN_SETS)
 
 
 def _load_rows(dataset_id: str, split: str, dataset_file: Path | None):
@@ -156,6 +176,7 @@ def load_subpop_questions(
     }
     questions = {}
     human = {}
+    suspicious_trailing = {}
 
     for row in rows:
         key = (str(row["attribute"]), str(row["group"]))
@@ -165,16 +186,27 @@ def load_subpop_questions(
         source_split = str(row.get("_subpop_source_split", split))
         record_key = (source_split, qkey)
         raw_options = list(row["options"])
-        # SubPOP excludes refusal from `responses`, but some survey records do
-        # not place the refusal choice at the end of the options list.
-        options = [option for option in raw_options if not _is_refusal_option(option)]
         responses = [float(value) for value in row["responses"]]
-        if len(responses) != len(options):
+        # SubPOP follows OpinionQA's convention: `responses` is a POSITIONAL
+        # distribution over the substantive options only. The refusal /
+        # "don't know" choice is excluded from `responses` (its mass lives in
+        # `refusal_rate`) and is listed LAST in `options`. run_inference.py
+        # encodes the same convention by dropping the final option with
+        # `output_dist[:-1]`. We therefore align by POSITION -- keep the first
+        # len(responses) options and treat any trailing options as refusal --
+        # instead of string-matching refusal labels, which keeps missing the
+        # many spellings surveys use ("Refused", "DK, DK/No", "No answer", ...).
+        n_substantive = len(responses)
+        if n_substantive > len(raw_options):
             raise ValueError(
-                f"SubPOP {qkey}/{key} has {len(raw_options)} raw options, "
-                f"{len(options)} non-refusal options, and {len(responses)} response "
-                f"probabilities. Raw options: {raw_options!r}"
+                f"SubPOP {qkey}/{key} has more response probabilities "
+                f"({n_substantive}) than options ({len(raw_options)}). "
+                f"Raw options: {raw_options!r}"
             )
+        options = raw_options[:n_substantive]
+        for dropped in raw_options[n_substantive:]:
+            if not _is_refusal_option(dropped):
+                suspicious_trailing.setdefault(str(dropped), (qkey, key))
         question = {
             "qkey": qkey,
             "question": str(row["question"]),
@@ -191,6 +223,18 @@ def load_subpop_questions(
             "ordinal": [float(value) for value in (row.get("ordinal") or [])],
             "refusal_rate": float(row.get("refusal_rate", 0.0)),
         }
+
+    if suspicious_trailing:
+        preview = ", ".join(
+            f"{option!r} (e.g. {qkey}/{key})"
+            for option, (qkey, key) in list(suspicious_trailing.items())[:10]
+        )
+        print(
+            f"[warn] Dropped {len(suspicious_trailing)} distinct trailing option(s) "
+            "that do not look like refusal choices while aligning options to "
+            f"`responses`. Verify the option order for: {preview}",
+            flush=True,
+        )
 
     complete = []
     for (source_split, qkey), question in questions.items():
