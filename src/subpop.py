@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 
@@ -100,7 +101,19 @@ def _read_jsonl(path: Path):
 def _is_refusal_option(option) -> bool:
     """Identify SubPOP's administrative refusal choice regardless of position."""
     normalized = " ".join(str(option).strip().lower().split())
-    return normalized == "refused" or normalized.startswith("refused ")
+    words = " ".join(re.sub(r"[^a-z0-9]+", " ", normalized).split())
+    return (
+        normalized == "refused"
+        or normalized.startswith("refused ")
+        or words in {
+            "dk ref",
+            "dk refused",
+            "don t know ref",
+            "don t know refused",
+            "dont know ref",
+            "dont know refused",
+        }
+    )
 
 
 def _load_rows(dataset_id: str, split: str, dataset_file: Path | None):
