@@ -17,24 +17,38 @@ def resolve_controlling_probe_dir(path):
     )
 
 
-def load_steer_vectors(probe_dir, attribute, from_idx, to_idx, device):
+def load_steer_vectors(
+    probe_dir, attribute, from_idx, to_idx, device, *, probe_name=None,
+    class_indices=None, expected_num_classes=None, expected_hidden_size=None,
+):
     import torch
 
-    config = ATTRIBUTE_CONFIG[attribute]
+    config = ATTRIBUTE_CONFIG.get(attribute)
+    if config is None and probe_name is None:
+        raise ValueError(f"Unknown attribute {attribute!r}; provide probe_name explicitly.")
+    checkpoint_prefix = probe_name or config["probe_name"]
+    selected_indices = class_indices or list(range(len(config["classes"])))
+    num_classes = expected_num_classes or len(config["classes"])
     vectors = {}
     for layer in range(from_idx, to_idx):
         # TalkTuner checkpoint numbering is one ahead of model decoder indices.
-        checkpoint = probe_dir / f"{config['probe_name']}_probe_at_layer_{layer + 1}.pth"
+        checkpoint = probe_dir / f"{checkpoint_prefix}_probe_at_layer_{layer + 1}.pth"
         if not checkpoint.is_file():
             raise FileNotFoundError(f"Missing checkpoint: {checkpoint}")
         state = torch.load(checkpoint, map_location="cpu")
         weights = state["proj.0.weight"].to(torch.float32)
-        expected = len(config["classes"])
-        if weights.shape[0] != expected:
+        if weights.shape[0] != num_classes:
             raise ValueError(
-                f"{checkpoint.name} has {weights.shape[0]} classes; expected {expected}."
+                f"{checkpoint.name} has {weights.shape[0]} classes; expected {num_classes}."
             )
-        vectors[layer] = [weights[i].to(device) for i in range(expected)]
+        if expected_hidden_size is not None and weights.shape[1] != expected_hidden_size:
+            raise ValueError(
+                f"{checkpoint.name} has hidden size {weights.shape[1]}; "
+                f"the model uses {expected_hidden_size}."
+            )
+        if any(index < 0 or index >= num_classes for index in selected_indices):
+            raise ValueError(f"Invalid class indices {selected_indices} for {checkpoint.name}.")
+        vectors[layer] = [weights[index].to(device) for index in selected_indices]
     return vectors
 
 

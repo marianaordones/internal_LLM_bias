@@ -1,0 +1,189 @@
+"""Loading and demographic mappings for the gated SubPOP dataset."""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+
+# Probe indices follow the class order used by the TalkTuner training data.
+SUBPOP_ATTRIBUTE_CONFIG = {
+    "sex": {
+        "dataset_attribute": "SEX",
+        "probe_attribute": "gender",
+        "llama_probe_name": "gender",
+        "qwen_probe_name": "gender",
+        "classes": [
+            {
+                "label": "male",
+                "probe_class_idx": 0,
+                "group": "Male",
+                "declaration": "I am a man.",
+            },
+            {
+                "label": "female",
+                "probe_class_idx": 1,
+                "group": "Female",
+                "declaration": "I am a woman.",
+            },
+        ],
+    },
+    "education": {
+        "dataset_attribute": "EDUCATION",
+        "probe_attribute": "education",
+        "llama_probe_name": "education",
+        "qwen_probe_name": "education",
+        "classes": [
+            {
+                "label": "some schooling",
+                "probe_class_idx": 0,
+                "group": "Less than high school",
+                "declaration": "I did not complete high school.",
+            },
+            {
+                "label": "college and more",
+                "probe_class_idx": 2,
+                "group": "College graduate/some postgrad",
+                "declaration": "I have a college education or higher.",
+            },
+        ],
+    },
+    "income": {
+        "dataset_attribute": "INCOME",
+        "probe_attribute": "socioeco",
+        "llama_probe_name": "socioeco",
+        "qwen_probe_name": "socioeconomic",
+        "classes": [
+            {
+                "label": "low",
+                "probe_class_idx": 0,
+                "group": "Less than $30,000",
+                "declaration": "I have low socioeconomic status.",
+            },
+            {
+                "label": "high",
+                "probe_class_idx": 2,
+                "group": "$100,000 or more",
+                "declaration": "I have high socioeconomic status.",
+            },
+        ],
+    },
+}
+
+
+def parse_subpop_attributes(raw: str) -> list[str]:
+    aliases = {
+        "sex": "sex", "gender": "sex",
+        "education": "education", "edu": "education",
+        "income": "income", "socioeco": "income", "socioeconomic": "income",
+    }
+    requested = [part.strip().lower() for part in raw.split(",") if part.strip()]
+    if requested == ["all"]:
+        return list(SUBPOP_ATTRIBUTE_CONFIG)
+    parsed = []
+    for value in requested:
+        if value not in aliases:
+            raise ValueError(f"Unknown SubPOP attribute {value!r}; use sex, education, income, or all.")
+        canonical = aliases[value]
+        if canonical not in parsed:
+            parsed.append(canonical)
+    if not parsed:
+        raise ValueError("Select at least one attribute.")
+    return parsed
+
+
+def _read_jsonl(path: Path):
+    with open(path, encoding="utf-8") as stream:
+        return [json.loads(line) for line in stream if line.strip()]
+
+
+def _load_rows(dataset_id: str, split: str, dataset_file: Path | None):
+    if dataset_file is not None:
+        return _read_jsonl(dataset_file)
+    try:
+        from datasets import load_dataset
+    except ImportError as exc:
+        raise ImportError(
+            "Loading SubPOP from Hugging Face requires `pip install datasets`."
+        ) from exc
+    if split != "all":
+        return load_dataset(dataset_id, split=split)
+
+    # Preserve the source split while combining every file exposed by the Hub.
+    dataset_dict = load_dataset(dataset_id)
+    rows = []
+    for split_name, dataset in dataset_dict.items():
+        for row in dataset:
+            tagged = dict(row)
+            tagged["_subpop_source_split"] = split_name
+            rows.append(tagged)
+    return rows
+
+
+def load_subpop_questions(
+    *,
+    dataset_id: str,
+    split: str,
+    attributes: list[str],
+    dataset_file: Path | None = None,
+) -> list[dict]:
+    """Return unique questions with complete human data for selected contrasts."""
+    rows = _load_rows(dataset_id, split, dataset_file)
+    required = {
+        (config["dataset_attribute"], item["group"])
+        for attribute in attributes
+        for item in SUBPOP_ATTRIBUTE_CONFIG[attribute]["classes"]
+        for config in [SUBPOP_ATTRIBUTE_CONFIG[attribute]]
+    }
+    questions = {}
+    human = {}
+
+    for row in rows:
+        key = (str(row["attribute"]), str(row["group"]))
+        if key not in required:
+            continue
+        qkey = str(row["qkey"])
+        source_split = str(row.get("_subpop_source_split", split))
+        record_key = (source_split, qkey)
+        options = list(row["options"])
+        if options and options[-1].strip().lower() == "refused":
+            options = options[:-1]
+        responses = [float(value) for value in row["responses"]]
+        if len(responses) != len(options):
+            raise ValueError(
+                f"SubPOP {qkey}/{key} has {len(options)} options but "
+                f"{len(responses)} response probabilities."
+            )
+        question = {
+            "qkey": qkey,
+            "question": str(row["question"]),
+            "options": options,
+            "source_split": source_split,
+        }
+        if record_key in questions and questions[record_key] != question:
+            raise ValueError(
+                f"Inconsistent question or options for qkey {qkey} in {source_split}."
+            )
+        questions[record_key] = question
+        human[(*record_key, *key)] = {
+            "responses": responses,
+            "ordinal": [float(value) for value in (row.get("ordinal") or [])],
+            "refusal_rate": float(row.get("refusal_rate", 0.0)),
+        }
+
+    complete = []
+    for (source_split, qkey), question in questions.items():
+        if not all((source_split, qkey, *key) in human for key in required):
+            continue
+        question["human"] = {
+            f"{attribute}|{group}": human[(source_split, qkey, attribute, group)]
+            for attribute, group in required
+        }
+        complete.append(question)
+    complete.sort(key=lambda item: (item["source_split"], item["qkey"]))
+    if not complete:
+        raise ValueError(
+            f"No complete questions found for {sorted(required)} in split {split!r}. "
+            "Check the split and exact SubPOP group labels."
+        )
+    return complete

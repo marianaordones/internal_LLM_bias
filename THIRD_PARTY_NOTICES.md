@@ -30,3 +30,16 @@ SOFTWARE.
 
 The local training implementation is model-agnostic and uses the selected model's
 own chat template, hidden size, and number of decoder layers.
+
+## SubPOP
+
+The optional SubPOP experiment loads the gated `jjssuh/subpop` dataset at runtime.
+SubPOP is released under CC BY-NC-SA 4.0 with additional access terms shown on its
+Hugging Face dataset card. The repository does not include a copy of the dataset.
+
+SubPOP is derived from Pew Research Center's American Trends Panel and the General
+Social Survey 1972–2022 (Davern, Bautista, Freese, Herd, and Morgan; NORC, 2024,
+2022 Release 3a).
+
+The opinions expressed herein, including any implications for policy, are those
+of the author and not of the survey research centers.

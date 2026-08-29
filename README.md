@@ -25,7 +25,7 @@ results/       Raw experiment outputs
 The main dependencies are:
 
 ```bash
-python -m pip install torch transformers numpy pandas matplotlib scipy jupyter
+python -m pip install torch transformers datasets numpy pandas matplotlib scipy jupyter
 ```
 
 The default model is `meta-llama/Llama-2-13b-chat-hf`. The included probes were trained for this model and are not directly compatible with arbitrary architectures.
@@ -118,6 +118,38 @@ python experiments/inferred_gender_names_opinionqa.py \
   --out results/inferred_gender_names_full.csv
 ```
 
+### SubPOP demographic profiles
+
+The SubPOP runner evaluates the extreme sex, education, and income groups using
+neutral (`steered`, magnitude 0), declared, and steered prompts. By default,
+`--split all` combines `subpop_train.jsonl` and `subpop_eval.jsonl`. Use
+`--split train` or `--split test` to select only one source file.
+
+For Llama 2 with the original TalkTuner probes:
+
+```bash
+python experiments/demographic_subpop_experiment.py \
+  --model-profile llama \
+  --attributes all \
+  --channels both \
+  --out results/demographic_subpop_llama.csv
+```
+
+For Qwen2.5-7B-Instruct with the newly trained probes:
+
+```bash
+python experiments/demographic_subpop_experiment.py \
+  --model-profile qwen \
+  --attributes all \
+  --channels both \
+  --out results/demographic_subpop_qwen.csv
+```
+
+The gated dataset is loaded from `jjssuh/subpop` through the local Hugging Face
+account. A downloaded JSONL can instead be supplied with `--dataset-file`. To
+avoid redistributing gated content, result CSVs contain question IDs and model
+distributions, but not question text, options, or human response distributions.
+
 
 ## Analysis
 
@@ -145,3 +177,9 @@ The reading and controlling probes were trained and released by the [TalkTuner p
 The public-opinion questions and human subgroup distributions are derived from [OpinionQA](https://github.com/tatsu-lab/opinions_qa), introduced in [*Whose Opinions Do Language Models Reflect?*](https://arxiv.org/abs/2303.17548).
 
 Please cite both upstream projects when using this repository. Probe outputs are model predictions and should not be treated as verified demographic facts about individuals.
+
+SubPOP experiments use the gated [SubPOP dataset](https://huggingface.co/datasets/jjssuh/subpop),
+derived from Pew Research Center's American Trends Panel and the General Social
+Survey. Use of SubPOP is subject to its non-commercial license and access terms.
+The opinions expressed herein, including any implications for policy, are those
+of the author and not of the survey research centers.

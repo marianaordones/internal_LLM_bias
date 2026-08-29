@@ -51,6 +51,23 @@ def option_token_ids(tokenizer, max_options=12):
     return ids_by_letter
 
 
+def option_token_ids_for_prompt(tokenizer, prompt, letters):
+    """Find the single next token for each answer letter in this prompt context."""
+    base_ids = tokenizer(prompt, add_special_tokens=False).input_ids
+    ids_by_letter = {}
+    for letter in letters:
+        for suffix in (letter, f" {letter}"):
+            combined = tokenizer(prompt + suffix, add_special_tokens=False).input_ids
+            if combined[:len(base_ids)] == base_ids and len(combined) == len(base_ids) + 1:
+                ids_by_letter[letter] = combined[-1]
+                break
+        else:
+            raise ValueError(
+                f"Option {letter!r} is not a single next token for this model/prompt."
+            )
+    return ids_by_letter
+
+
 def serialize_distribution(values):
     # Fixed precision keeps result files compact and stable across runs.
     return json.dumps([round(float(value), 8) for value in values], ensure_ascii=False)
