@@ -44,6 +44,37 @@ data/probe_checkpoints/controlling_probe/
 data/probe_checkpoints/reading_probe/
 ```
 
+## Training probes for another model
+
+The repository includes TalkTuner's compressed synthetic conversations and a
+model-agnostic trainer. For Qwen2.5-7B-Instruct, first run a small end-to-end test:
+
+```bash
+python training/train_demographic_probes.py \
+  --attributes gender \
+  --channels reading \
+  --limit 100 \
+  --epochs 2 \
+  --output-dir data/probe_checkpoints/qwen2.5-7b-instruct-smoke
+```
+
+Then train all reading and controlling probes:
+
+```bash
+python training/train_demographic_probes.py \
+  --model Qwen/Qwen2.5-7B-Instruct \
+  --attributes all \
+  --channels reading,controlling
+```
+
+The extraction stage caches final-token hidden states before fitting one linear
+probe per layer. To run the expensive model pass and the lightweight fitting step
+separately, use `--stage extract` followed by `--stage train` with the same paths.
+The defaults reproduce TalkTuner's sigmoid/BCE objective, stratified 80/20 split,
+50 epochs, and seed 12345. Checkpoints and per-attribute metadata are written below
+`data/probe_checkpoints/qwen2.5-7b-instruct/`.
+See `training/README.md` for the two-stage workflow and output layout.
+
 
 ## Experiments
 
@@ -103,6 +134,7 @@ The analysis notebooks are:
 
 - `analyses/gender_focus_analyses.ipynb`
 - `analyses/additional_analyses.ipynb`
+- `analyses/inferred_gender_names_analysis.ipynb`
 
 Raw experiment outputs belong in `results/`; derived tables and plots belong in `analyses/`.
 
