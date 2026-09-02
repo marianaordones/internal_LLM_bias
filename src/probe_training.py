@@ -275,6 +275,7 @@ def train_probes_from_cache(
     learning_rate: float,
     validation_fraction: float,
     seed: int,
+    expected_model_name: str | None = None,
 ) -> list[dict]:
     """Train and save one TalkTuner-compatible classifier per cached layer."""
     import torch
@@ -282,6 +283,11 @@ def train_probes_from_cache(
     from torch.utils.data import DataLoader, TensorDataset
 
     payload = torch.load(cache_path, map_location="cpu")
+    if expected_model_name is not None and payload.get("model_name") != expected_model_name:
+        raise ValueError(
+            f"Activation cache {cache_path} was extracted from "
+            f"{payload.get('model_name')!r}, not {expected_model_name!r}."
+        )
     activations = payload["activations"]
     labels = payload["labels"]
     class_names = payload["class_names"]
@@ -304,6 +310,7 @@ def train_probes_from_cache(
         optimizer = torch.optim.Adam(probe.parameters(), lr=learning_rate)
         criterion = nn.BCELoss()
         best_accuracy = -1.0
+        best_validation_loss = float("inf")
         best_epoch = 0
         checkpoint = output_dir / f"{payload['attribute']}_probe_at_layer_{layer}.pth"
 
@@ -333,16 +340,50 @@ def train_probes_from_cache(
                     correct += (probabilities.argmax(dim=1) == targets).sum().item()
                     total += len(targets)
             accuracy = correct / total
-            if accuracy > best_accuracy:
+            validation_loss /= total
+            if accuracy > best_accuracy or (
+                accuracy == best_accuracy and validation_loss < best_validation_loss
+            ):
                 best_accuracy = accuracy
+                best_validation_loss = validation_loss
                 best_epoch = epoch
                 torch.save(probe.state_dict(), checkpoint)
+
+        probe.load_state_dict(torch.load(checkpoint, map_location=device))
+        probe.eval()
+        confusion = torch.zeros(
+            (len(class_names), len(class_names)), dtype=torch.long
+        )
+        with torch.no_grad():
+            for features, targets in val_loader:
+                features = features.to(device)
+                predictions = probe(features).argmax(dim=1).cpu()
+                for target, prediction in zip(targets, predictions):
+                    confusion[int(target), int(prediction)] += 1
+        recalls = []
+        f1_scores = []
+        for class_idx in range(len(class_names)):
+            true_positive = int(confusion[class_idx, class_idx])
+            false_negative = int(confusion[class_idx].sum()) - true_positive
+            false_positive = int(confusion[:, class_idx].sum()) - true_positive
+            recall = true_positive / max(true_positive + false_negative, 1)
+            precision = true_positive / max(true_positive + false_positive, 1)
+            f1 = 2 * precision * recall / max(precision + recall, 1e-12)
+            recalls.append(recall)
+            f1_scores.append(f1)
+        class_counts = torch.bincount(labels[val_indices], minlength=len(class_names))
+        majority_baseline = float(class_counts.max().item() / class_counts.sum().item())
 
         record = {
             "attribute": payload["attribute"],
             "channel": payload["channel"],
             "layer": layer,
             "validation_accuracy": best_accuracy,
+            "balanced_accuracy": sum(recalls) / len(recalls),
+            "macro_f1": sum(f1_scores) / len(f1_scores),
+            "validation_loss": best_validation_loss,
+            "majority_baseline": majority_baseline,
+            "accuracy_over_baseline": best_accuracy - majority_baseline,
             "best_epoch": best_epoch,
             "train_examples": len(train_indices),
             "validation_examples": len(val_indices),
@@ -384,3 +425,191 @@ def train_probes_from_cache(
         json.dumps(metadata, indent=2), encoding="utf-8"
     )
     return metrics
+
+
+def generate_probe_quality_report(
+    *,
+    output_dir: Path,
+    attributes: list[str],
+    channels: list[str],
+    top_k: int = 10,
+    window_sizes: tuple[int, ...] = (8, 9, 10),
+) -> dict[str, Path]:
+    """Aggregate per-layer metrics into compact CSV and Markdown reports."""
+    metric_rows = []
+    metadata_records = []
+
+    for channel in channels:
+        channel_dir = output_dir / f"{channel}_probe"
+        for attribute in attributes:
+            metrics_path = channel_dir / f"{attribute}_metrics.csv"
+            metadata_path = channel_dir / f"{attribute}_metadata.json"
+            if not metrics_path.is_file():
+                raise FileNotFoundError(f"Missing probe metrics: {metrics_path}")
+            if not metadata_path.is_file():
+                raise FileNotFoundError(f"Missing probe metadata: {metadata_path}")
+
+            with open(metrics_path, newline="", encoding="utf-8") as stream:
+                rows = list(csv.DictReader(stream))
+            if not rows:
+                raise ValueError(f"Empty metrics file: {metrics_path}")
+            for row in rows:
+                metric_rows.append({
+                    "attribute": attribute,
+                    "channel": channel,
+                    "layer": int(row["layer"]),
+                    "decoder_layer": int(row["layer"]) - 1,
+                    "validation_accuracy": float(row["validation_accuracy"]),
+                    "balanced_accuracy": float(row.get("balanced_accuracy", row["validation_accuracy"])),
+                    "macro_f1": float(row.get("macro_f1", row["validation_accuracy"])),
+                    "validation_loss": float(row.get("validation_loss", "nan")),
+                    "majority_baseline": float(row.get("majority_baseline", "nan")),
+                    "accuracy_over_baseline": float(row.get("accuracy_over_baseline", "nan")),
+                    "best_epoch": int(row["best_epoch"]),
+                    "train_examples": int(row["train_examples"]),
+                    "validation_examples": int(row["validation_examples"]),
+                    "checkpoint": row["checkpoint"],
+                })
+            metadata_records.append(json.loads(metadata_path.read_text(encoding="utf-8")))
+
+    ranked_rows = []
+    summary_rows = []
+    for channel in channels:
+        for attribute in attributes:
+            group = [
+                row for row in metric_rows
+                if row["channel"] == channel and row["attribute"] == attribute
+            ]
+            group.sort(key=lambda row: (-row["validation_accuracy"], row["layer"]))
+            for rank, row in enumerate(group, start=1):
+                ranked_rows.append({**row, "rank": rank})
+            best = group[0]
+            summary_rows.append({
+                "attribute": attribute,
+                "channel": channel,
+                "best_checkpoint_layer": best["layer"],
+                "best_decoder_layer": best["decoder_layer"],
+                "best_validation_accuracy": best["validation_accuracy"],
+                "best_balanced_accuracy": best["balanced_accuracy"],
+                "best_macro_f1": best["macro_f1"],
+                "best_validation_loss": best["validation_loss"],
+                "accuracy_over_baseline": best["accuracy_over_baseline"],
+                "best_epoch": best["best_epoch"],
+                "mean_accuracy_all_layers": sum(row["validation_accuracy"] for row in group) / len(group),
+                "top_layers": ", ".join(
+                    f"{row['layer']} ({row['validation_accuracy']:.4f})"
+                    for row in group[:top_k]
+                ),
+            })
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    rankings_path = output_dir / "probe_layer_rankings.csv"
+    with open(rankings_path, "w", newline="", encoding="utf-8") as stream:
+        writer = csv.DictWriter(stream, fieldnames=list(ranked_rows[0]))
+        writer.writeheader()
+        writer.writerows(ranked_rows)
+
+    summary_path = output_dir / "probe_quality_summary.csv"
+    with open(summary_path, "w", newline="", encoding="utf-8") as stream:
+        writer = csv.DictWriter(stream, fieldnames=list(summary_rows[0]))
+        writer.writeheader()
+        writer.writerows(summary_rows)
+
+    average_rankings = {}
+    best_windows = {}
+    for channel in channels:
+        channel_rows = [row for row in metric_rows if row["channel"] == channel]
+        layers = sorted(set(row["layer"] for row in channel_rows))
+        layer_scores = []
+        for layer in layers:
+            values = [
+                row["validation_accuracy"] for row in channel_rows
+                if row["layer"] == layer
+            ]
+            if len(values) == len(attributes):
+                layer_scores.append((layer, sum(values) / len(values)))
+        average_rankings[channel] = sorted(layer_scores, key=lambda item: (-item[1], item[0]))
+
+        usable = sorted((layer, score) for layer, score in layer_scores if layer >= 1)
+        best_windows[channel] = []
+        for size in sorted(set(window_sizes)):
+            candidates = []
+            for start in range(0, len(usable) - size + 1):
+                window = usable[start:start + size]
+                checkpoint_layers = [layer for layer, _ in window]
+                if checkpoint_layers != list(range(checkpoint_layers[0], checkpoint_layers[0] + size)):
+                    continue
+                candidates.append({
+                    "size": size,
+                    "checkpoint_start": checkpoint_layers[0],
+                    "checkpoint_end": checkpoint_layers[-1],
+                    "decoder_from_idx": checkpoint_layers[0] - 1,
+                    "decoder_to_idx_exclusive": checkpoint_layers[-1],
+                    "mean_accuracy": sum(score for _, score in window) / size,
+                })
+            if candidates:
+                best_windows[channel].append(
+                    max(candidates, key=lambda item: item["mean_accuracy"])
+                )
+
+    model_names = sorted({record["model_name"] for record in metadata_records})
+    hidden_sizes = sorted({record["hidden_size"] for record in metadata_records})
+    decoder_counts = sorted({record["num_hidden_layers"] for record in metadata_records})
+    report_lines = [
+        "# Probe quality report",
+        "",
+        f"- Model: `{', '.join(model_names)}`",
+        f"- Hidden size: `{', '.join(map(str, hidden_sizes))}`",
+        f"- Decoder layers: `{', '.join(map(str, decoder_counts))}`",
+        f"- Attributes: `{', '.join(attributes)}`",
+        f"- Channels: `{', '.join(channels)}`",
+        "",
+        "Validation accuracy measures demographic classification on the held-out split. "
+        "It does not by itself establish that steering will improve human alignment.",
+        "",
+        "## Best layer per probe",
+        "",
+        "| Attribute | Channel | Checkpoint layer | Decoder layer | Accuracy | Balanced acc. | Macro-F1 | Best epoch |",
+        "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |",
+    ]
+    for row in summary_rows:
+        report_lines.append(
+            f"| {row['attribute']} | {row['channel']} | "
+            f"{row['best_checkpoint_layer']} | {row['best_decoder_layer']} | "
+            f"{row['best_validation_accuracy']:.4f} | "
+            f"{row['best_balanced_accuracy']:.4f} | {row['best_macro_f1']:.4f} | "
+            f"{row['best_epoch']} |"
+        )
+
+    for channel in channels:
+        report_lines.extend([
+            "",
+            f"## {channel.capitalize()}: layers averaged across attributes",
+            "",
+            "| Rank | Checkpoint layer | Decoder layer | Mean accuracy |",
+            "| ---: | ---: | ---: | ---: |",
+        ])
+        for rank, (layer, score) in enumerate(average_rankings[channel][:top_k], start=1):
+            report_lines.append(f"| {rank} | {layer} | {layer - 1} | {score:.4f} |")
+        if best_windows[channel]:
+            report_lines.extend([
+                "",
+                "Best contiguous windows (directly usable as steering layer ranges):",
+                "",
+                "| Layers | Checkpoints | `--from-idx` | `--to-idx` | Mean accuracy |",
+                "| ---: | --- | ---: | ---: | ---: |",
+            ])
+            for window in best_windows[channel]:
+                report_lines.append(
+                    f"| {window['size']} | {window['checkpoint_start']}–{window['checkpoint_end']} | "
+                    f"{window['decoder_from_idx']} | {window['decoder_to_idx_exclusive']} | "
+                    f"{window['mean_accuracy']:.4f} |"
+                )
+
+    report_path = output_dir / "probe_quality_report.md"
+    report_path.write_text("\n".join(report_lines) + "\n", encoding="utf-8")
+    return {
+        "report": report_path,
+        "summary": summary_path,
+        "rankings": rankings_path,
+    }

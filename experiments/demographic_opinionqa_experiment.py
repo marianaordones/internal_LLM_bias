@@ -52,6 +52,7 @@ MODEL_PROFILES = {
         "from_idx": 19,
         "to_idx": 29,
         "dtype": "float16",
+        "trained_probe_names": False,
     },
     "qwen": {
         "model_id": "Qwen/Qwen2.5-7B-Instruct",
@@ -59,6 +60,17 @@ MODEL_PROFILES = {
         "from_idx": 18,
         "to_idx": 28,
         "dtype": "bfloat16",
+        "trained_probe_names": True,
+    },
+    "mistral": {
+        "model_id": "mistralai/Mistral-7B-Instruct-v0.3",
+        "probe_dir": REPO_ROOT / "data/probe_checkpoints/mistral-7b-instruct-v0.3/controlling_probe",
+        # Use all decoder layers by default. Prefer the best window reported by
+        # probe_quality_report.md once the model's probes have been trained.
+        "from_idx": 0,
+        "to_idx": 32,
+        "dtype": "bfloat16",
+        "trained_probe_names": True,
     },
 }
 
@@ -75,7 +87,7 @@ def format_prompt(tokenizer, model_profile, message):
 
 
 def candidate_ids(tokenizer, prompt, letters, model_profile, llama_letter_ids):
-    # Preserve the original Llama behavior; derive Qwen tokens in prompt context.
+    # Preserve the original Llama behavior; derive native-model tokens in context.
     if model_profile == "llama":
         return [llama_letter_ids[letter] for letter in letters]
     contextual = option_token_ids_for_prompt(tokenizer, prompt, letters)
@@ -118,11 +130,12 @@ def main():
     probe_dir_arg = args.probe_dir or profile["probe_dir"]
     from_idx = profile["from_idx"] if args.from_idx is None else args.from_idx
     to_idx = profile["to_idx"] if args.to_idx is None else args.to_idx
-    output = args.out or (
-        REPO_ROOT / "demographic_opinionqa_results.csv"
-        if args.model_profile == "llama"
-        else REPO_ROOT / "results/demographic_opinionqa_qwen.csv"
-    )
+    default_outputs = {
+        "llama": REPO_ROOT / "demographic_opinionqa_results.csv",
+        "qwen": REPO_ROOT / "results/demographic_opinionqa_qwen.csv",
+        "mistral": REPO_ROOT / "results/demographic_opinionqa_mistral.csv",
+    }
+    output = args.out or default_outputs[args.model_profile]
 
     attributes = parse_attributes(args.attributes)
     magnitudes = parse_magnitudes(args.magnitudes)
@@ -164,7 +177,7 @@ def main():
             for attribute in attributes:
                 config = ATTRIBUTE_CONFIG[attribute]
                 probe_name = config["probe_name"]
-                if args.model_profile == "qwen" and attribute == "socioeco":
+                if profile["trained_probe_names"] and attribute == "socioeco":
                     probe_name = "socioeconomic"
                 steer_vectors[attribute] = load_steer_vectors(
                     probe_dir,
