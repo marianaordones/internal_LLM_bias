@@ -115,6 +115,33 @@ def parse_conversation(text: str) -> list[dict[str, str]]:
     return messages
 
 
+def normalize_chat_roles(messages: list[dict[str, str]]) -> list[dict[str, str]]:
+    """Make TalkTuner conversations valid for strict alternating chat templates.
+
+    A few synthetic files contain adjacent turns with the same role. Mistral's
+    template rejects those conversations, so preserve their text by joining
+    adjacent same-role turns instead of dropping either one.
+    """
+    normalized: list[dict[str, str]] = []
+    for message in messages:
+        role = message.get("role")
+        content = str(message.get("content", "")).strip()
+        if role not in {"user", "assistant"} or not content:
+            continue
+        if not normalized and role == "assistant":
+            # A chat prompt cannot begin with an orphan assistant response.
+            continue
+        if normalized and normalized[-1]["role"] == role:
+            normalized[-1]["content"] += "\n" + content
+        else:
+            normalized.append({"role": role, "content": content})
+
+    # Probe activations are measured at a user-to-assistant generation point.
+    while normalized and normalized[-1]["role"] != "user":
+        normalized.pop()
+    return normalized
+
+
 def load_examples(dataset_dir: Path, attribute: str) -> tuple[list[ConversationExample], dict]:
     """Read matching TalkTuner conversations directly from compressed archives."""
     spec = ATTRIBUTE_SPECS[attribute]
@@ -161,6 +188,9 @@ def load_examples(dataset_dir: Path, attribute: str) -> tuple[list[ConversationE
 
 def render_probe_prompt(tokenizer, messages, attribute: str, channel: str) -> str:
     """Render the same reading/control endpoints used by TalkTuner for any chat model."""
+    messages = normalize_chat_roles(messages)
+    if not messages:
+        raise ValueError("Conversation has no valid user turn after role normalization.")
     chat = [{"role": "system", "content": DEFAULT_SYSTEM_PROMPT}, *messages]
     prompt = tokenizer.apply_chat_template(
         chat, tokenize=False, add_generation_prompt=True
