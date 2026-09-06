@@ -186,12 +186,26 @@ def load_examples(dataset_dir: Path, attribute: str) -> tuple[list[ConversationE
     return examples, archive_stats
 
 
-def render_probe_prompt(tokenizer, messages, attribute: str, channel: str) -> str:
+def render_probe_prompt(
+    tokenizer,
+    messages,
+    attribute: str,
+    channel: str,
+    system_prompt_mode: str = "system",
+) -> str:
     """Render the same reading/control endpoints used by TalkTuner for any chat model."""
     messages = normalize_chat_roles(messages)
     if not messages:
         raise ValueError("Conversation has no valid user turn after role normalization.")
-    chat = [{"role": "system", "content": DEFAULT_SYSTEM_PROMPT}, *messages]
+    if system_prompt_mode == "system":
+        chat = [{"role": "system", "content": DEFAULT_SYSTEM_PROMPT}, *messages]
+    elif system_prompt_mode == "first_user":
+        # Gemma 2 IT supports only user/model roles. Google recommends placing
+        # system-level instructions inside the initial user turn.
+        chat = [dict(message) for message in messages]
+        chat[0]["content"] = f"{DEFAULT_SYSTEM_PROMPT}\n\n{chat[0]['content']}"
+    else:
+        raise ValueError(f"Unknown system prompt mode: {system_prompt_mode!r}")
     prompt = tokenizer.apply_chat_template(
         chat, tokenize=False, add_generation_prompt=True
     )
@@ -238,11 +252,17 @@ def extract_activations(
     output_path: Path,
     model_name: str,
     archive_stats: dict,
+    system_prompt_mode: str = "system",
 ) -> None:
     """Cache the final-token residual stream for every model layer."""
     import torch
 
-    prompts = [render_probe_prompt(tokenizer, ex.messages, attribute, channel) for ex in examples]
+    prompts = [
+        render_probe_prompt(
+            tokenizer, ex.messages, attribute, channel, system_prompt_mode
+        )
+        for ex in examples
+    ]
     chunks = []
     with torch.inference_mode():
         for start in range(0, len(prompts), batch_size):
@@ -272,6 +292,7 @@ def extract_activations(
         "attribute": attribute,
         "channel": channel,
         "model_name": model_name,
+        "system_prompt_mode": system_prompt_mode,
         "hidden_size": int(model.config.hidden_size),
         "num_hidden_layers": int(model.config.num_hidden_layers),
         "max_length": max_length,
@@ -438,6 +459,8 @@ def train_probes_from_cache(
             "num_hidden_layers", "class_names", "max_length", "archive_stats"
         )
     }
+    if "system_prompt_mode" in payload:
+        metadata["system_prompt_mode"] = payload["system_prompt_mode"]
     metadata.update(
         {
             "checkpoint_layers": list(range(activations.shape[1])),

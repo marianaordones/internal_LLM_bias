@@ -72,6 +72,16 @@ MODEL_PROFILES = {
         "dtype": "bfloat16",
         "trained_probe_names": True,
     },
+    "gemma2": {
+        "model_id": "google/gemma-2-9b-it",
+        "probe_dir": REPO_ROOT / "data/probe_checkpoints/gemma-2-9b-it/controlling_probe",
+        # Start with all layers, then replace this range with the best window
+        # reported after training the Gemma-specific controlling probes.
+        "from_idx": 0,
+        "to_idx": 42,
+        "dtype": "bfloat16",
+        "trained_probe_names": True,
+    },
 }
 
 
@@ -134,6 +144,7 @@ def main():
         "llama": REPO_ROOT / "demographic_opinionqa_results.csv",
         "qwen": REPO_ROOT / "results/demographic_opinionqa_qwen.csv",
         "mistral": REPO_ROOT / "results/demographic_opinionqa_mistral.csv",
+        "gemma2": REPO_ROOT / "results/demographic_opinionqa_gemma2.csv",
     }
     output = args.out or default_outputs[args.model_profile]
 
