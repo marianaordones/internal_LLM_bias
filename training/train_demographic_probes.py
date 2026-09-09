@@ -30,19 +30,11 @@ MODEL_PROFILES = {
         "model": "Qwen/Qwen2.5-7B-Instruct",
         "slug": "qwen2.5-7b-instruct",
         "dtype": "bfloat16",
-        "system_prompt_mode": "system",
     },
     "mistral": {
         "model": "mistralai/Mistral-7B-Instruct-v0.3",
         "slug": "mistral-7b-instruct-v0.3",
         "dtype": "bfloat16",
-        "system_prompt_mode": "system",
-    },
-    "gemma2": {
-        "model": "google/gemma-2-9b-it",
-        "slug": "gemma-2-9b-it",
-        "dtype": "bfloat16",
-        "system_prompt_mode": "first_user",
     },
 }
 
@@ -144,7 +136,6 @@ def main() -> None:
     else:
         selected_slug = profile["slug"]
     selected_dtype = args.dtype or (profile["dtype"] if profile else "bfloat16")
-    system_prompt_mode = profile["system_prompt_mode"] if profile else "system"
     cache_dir = args.cache_dir or REPO_ROOT / "data" / "probe_activation_cache" / selected_slug
     output_dir = args.output_dir or REPO_ROOT / "data" / "probe_checkpoints" / selected_slug
 
@@ -159,7 +150,7 @@ def main() -> None:
 
     print(
         f"[config] profile={args.model_profile} model={selected_model} slug={selected_slug} "
-        f"dtype={selected_dtype} system_prompt_mode={system_prompt_mode} "
+        f"dtype={selected_dtype} "
         f"cache_dir={cache_dir} output_dir={output_dir}",
         flush=True,
     )
@@ -210,7 +201,6 @@ def main() -> None:
                     output_path=cache_path,
                     model_name=selected_model,
                     archive_stats=archive_stats,
-                    system_prompt_mode=system_prompt_mode,
                 )
             if args.stage in {"all", "train"}:
                 if not cache_path.is_file():

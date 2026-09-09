@@ -92,8 +92,28 @@ def wasserstein_ordinal(p, q, ordinal):
     cumulative_gap = np.abs(np.cumsum(p[order]) - np.cumsum(q[order]))
     return float(np.sum(cumulative_gap[:-1] * np.diff(x)))
 
+def align_to_ordinal(p, ordinal):
+    """Mantém só as opções com ordinal e renormaliza.
+
+    Opções além do comprimento do ordinal (ex.: 'Not sure', 'Refused')
+    são categorias não-ordinais; descartá-las condiciona a distribuição
+    a uma resposta substantiva e ordenável.
+    """
+    p = np.asarray(p, dtype=float)
+    k = len(ordinal)
+    if len(p) < k:
+        raise ValueError(f"Distribution shorter than ordinal: {len(p)} < {k}")
+    kept = p[:k]
+    total = float(kept.sum())
+    if total <= 0:
+        raise ValueError("Distribution has no mass on ordinal options after dropping refusals")
+    return kept / total
+
 
 def distances(p, q, ordinal):
+    ordinal = np.asarray(ordinal, dtype=float)
+    p = align_to_ordinal(p, ordinal)
+    q = align_to_ordinal(q, ordinal)
     return {
         "wasserstein": wasserstein_ordinal(p, q, ordinal),
         "total_variation": tv_distance(p, q),
