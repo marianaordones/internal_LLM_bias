@@ -65,9 +65,7 @@ MODEL_PROFILES = {
     "mistral": {
         "model_id": "mistralai/Mistral-7B-Instruct-v0.3",
         "probe_dir": REPO_ROOT / "data/probe_checkpoints/mistral-7b-instruct-v0.3/controlling_probe",
-        # Use all decoder layers by default. Prefer the best window reported by
-        # probe_quality_report.md once the model's probes have been trained.
-        "from_idx": 0,
+        "from_idx": 22,
         "to_idx": 32,
         "dtype": "bfloat16",
         "trained_probe_names": True,
@@ -112,7 +110,11 @@ def main():
     )
     parser.add_argument("--attributes", default="all", help="Comma-separated: gender, age, education, socioeco, or all")
     parser.add_argument("--channels", choices=["declared", "steered", "both"], default="both")
-    parser.add_argument("--magnitudes", default="0,1,3,5,7,8,9,13", help="Comma-separated steering magnitudes")
+    parser.add_argument(
+        "--magnitudes",
+        default="0,2,4,6,8,10,12,14,16,18,20",
+        help="Comma-separated steering magnitudes",
+    )
     parser.add_argument("--qkey-dict", type=Path, default=DEFAULT_QKEY_DICT)
     parser.add_argument("--probe-dir", type=Path, help="Override the profile's controlling-probe directory")
     parser.add_argument("--model", help="Override the profile's Hugging Face model ID or local path")
