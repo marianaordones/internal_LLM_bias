@@ -1,0 +1,66 @@
+{
+  "attribute": "education",
+  "channel": "controlling",
+  "model_name": "Qwen/Qwen2.5-7B-Instruct",
+  "hidden_size": 3584,
+  "num_hidden_layers": 28,
+  "class_names": [
+    "someschool",
+    "highschool",
+    "collegemore"
+  ],
+  "max_length": 2048,
+  "archive_stats": {
+    "openai_education_three_classes_1.zip": {
+      "accepted": 2999,
+      "rejected": 12
+    },
+    "openai_education_three_classes_2.zip": {
+      "accepted": 750,
+      "rejected": 0
+    },
+    "openai_education_three_classes_3.zip": {
+      "accepted": 750,
+      "rejected": 0
+    }
+  },
+  "checkpoint_layers": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28
+  ],
+  "training": {
+    "objective": "sigmoid + binary cross entropy on one-hot labels",
+    "epochs": 50,
+    "batch_size": 200,
+    "learning_rate": 0.001,
+    "validation_fraction": 0.2,
+    "seed": 12345
+  }
+}
