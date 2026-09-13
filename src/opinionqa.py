@@ -38,6 +38,11 @@ def build_user_message(question, options, declaration=None):
 
 def build_named_user_message(name, question, options):
     name_sentence = f"Hi! My name is {name}."
-    # Reuse the declaration slot so prompt spacing matches the other experiments.
-    message, letters = build_user_message(question, options, name_sentence)
+    message, letters = build_cued_user_message(name_sentence, question, options)
     return message, name_sentence, letters
+
+
+def build_cued_user_message(cue_sentence, question, options):
+    """Place a short identity cue before an OpinionQA question."""
+    # Reuse the declaration slot so spacing matches the demographic experiments.
+    return build_user_message(question, options, cue_sentence)
