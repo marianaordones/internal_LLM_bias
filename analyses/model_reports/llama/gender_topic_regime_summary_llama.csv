@@ -1,0 +1,13 @@
+question_type,gender_question,class_label,regime,mean,ci95,n
+Gender-related questions,True,male,Neutral (N=0),0.44467614900113084,0.07678138518998141,77
+Gender-related questions,True,male,Declared,0.5066964784820557,0.09406118906622872,77
+Gender-related questions,True,male,Steered N=20,0.2940032831547784,0.04701557031269162,77
+Gender-related questions,True,female,Neutral (N=0),0.516110037695943,0.09453069978181679,77
+Gender-related questions,True,female,Declared,0.5068170571737253,0.09171939949686726,77
+Gender-related questions,True,female,Steered N=20,0.41785075782191683,0.06568072811261007,77
+Non-gender questions,False,male,Neutral (N=0),0.6397962573503154,0.03697307339422691,407
+Non-gender questions,False,male,Declared,0.6999352243669894,0.040595209750813495,407
+Non-gender questions,False,male,Steered N=20,0.5181116026530044,0.027580430712449335,407
+Non-gender questions,False,female,Neutral (N=0),0.644981715178296,0.03790504372236424,409
+Non-gender questions,False,female,Declared,0.6703048827575971,0.0425989955183588,409
+Non-gender questions,False,female,Steered N=20,0.4531134516627763,0.029138320132329264,409

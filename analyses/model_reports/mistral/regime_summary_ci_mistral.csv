@@ -1,0 +1,55 @@
+attribute,class_label,group,regime,mean,ci95,n
+age,adult,"age
+adult",Neutral (N=0),0.6434342694140166,0.031733609828394516,483
+age,adult,"age
+adult",Declared,0.6631174383355533,0.033304985899827055,483
+age,adult,"age
+adult",Steered N=2,0.37408273497142364,0.020588357796336474,483
+age,older_adult,"age
+older_adult",Neutral (N=0),0.6745083588815369,0.039281020402332126,482
+age,older_adult,"age
+older_adult",Declared,0.6775659275420157,0.03344773218750373,482
+age,older_adult,"age
+older_adult",Steered N=2,0.41859218526509223,0.025494264260893962,482
+education,college and more,"education
+college and more",Neutral (N=0),0.620650938406193,0.0317997143523663,486
+education,college and more,"education
+college and more",Declared,0.6344911942549114,0.030231578934968386,486
+education,college and more,"education
+college and more",Steered N=2,0.3838871306854124,0.03111917937749477,486
+education,high school,"education
+high school",Neutral (N=0),0.6752525412881862,0.0337588195745279,486
+education,high school,"education
+high school",Declared,0.7059376921896349,0.03671939901631985,486
+education,high school,"education
+high school",Steered N=2,0.5351209795443983,0.02981220795207426,486
+education,some schooling,"education
+some schooling",Neutral (N=0),0.6999785922713115,0.03407121437986457,486
+education,some schooling,"education
+some schooling",Declared,0.7697634139693831,0.043997299563151654,486
+education,some schooling,"education
+some schooling",Steered N=2,0.38443138058611087,0.02638075314498596,486
+gender,female,"gender
+female",Neutral (N=0),0.6424962289001624,0.0331630775617667,486
+gender,female,"gender
+female",Declared,0.6743532858389798,0.033839789957754295,486
+gender,female,"gender
+female",Steered N=2,0.4528757819957551,0.027886725417265536,486
+gender,male,"gender
+male",Neutral (N=0),0.6685506082397749,0.03302311760085919,484
+gender,male,"gender
+male",Declared,0.7002798021129043,0.03753098990691264,484
+gender,male,"gender
+male",Steered N=2,0.33007938778734375,0.02454383933218699,484
+socioeco,high,"socioeco
+high",Neutral (N=0),0.6382396065232874,0.03335520640121871,486
+socioeco,high,"socioeco
+high",Declared,0.6545508195908907,0.033830792845793614,486
+socioeco,high,"socioeco
+high",Steered N=2,0.3670226275852251,0.026625719187270143,486
+socioeco,low,"socioeco
+low",Neutral (N=0),0.6676142663322916,0.03171587504732105,486
+socioeco,low,"socioeco
+low",Declared,0.7169457887766093,0.037162540006538416,486
+socioeco,low,"socioeco
+low",Steered N=2,0.31554329911560264,0.022870019959261582,486

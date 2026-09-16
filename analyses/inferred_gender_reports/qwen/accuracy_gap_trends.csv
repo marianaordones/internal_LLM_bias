@@ -1,0 +1,2 @@
+attribute,group_a,group_b,channel,magnitude,regime,n_questions,n_predictions,strict_accuracy,log_odds_slope_per_gap_sd,odds_ratio_per_gap_sd,slope_ci95_low,slope_ci95_high,cluster_robust_p_slope_le_zero,odds_ratio_ci95_low,odds_ratio_ci95_high
+gender,Male,Female,inferred,,Inferred from name,484,968,0.503099173553719,0.0020932398181979306,1.0020954321741082,-0.009173421202065844,0.013359900838461704,0.35787315211780946,0.9908685262609663,1.0134495430726158

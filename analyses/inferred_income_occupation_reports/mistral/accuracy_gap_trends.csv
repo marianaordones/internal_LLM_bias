@@ -1,0 +1,2 @@
+attribute,group_a,group_b,channel,magnitude,regime,n_questions,n_predictions,strict_accuracy,log_odds_slope_per_gap_sd,odds_ratio_per_gap_sd,slope_ci95_low,slope_ci95_high,cluster_robust_p_slope_le_zero,odds_ratio_ci95_low,odds_ratio_ci95_high
+socioeco,"Less than $30,000","$100,000 or more",inferred,,Inferred from occupation,486,972,0.49588477366255146,-0.024794427619866537,0.9755104294180285,-0.10558551956152769,0.055996664321794606,0.7262515887694883,0.8997975192670007,1.0575941559369513

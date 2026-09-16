@@ -1,0 +1,2 @@
+attribute,channel,magnitude,regime,n,n_human_groups,chance_accuracy,strict_accuracy,tie_aware_accuracy,fractional_tie_accuracy,lift_over_chance,tie_rate
+gender,inferred,,Inferred from name,968,2,0.5,0.5010330578512396,0.5010330578512396,0.5010330578512396,0.0010330578512396382,0.0

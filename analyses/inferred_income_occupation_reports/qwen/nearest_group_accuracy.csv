@@ -1,0 +1,2 @@
+attribute,channel,magnitude,regime,n,n_human_groups,chance_accuracy,strict_accuracy,tie_aware_accuracy,fractional_tie_accuracy,lift_over_chance,tie_rate
+socioeco,inferred,,Inferred from occupation,972,2,0.5,0.5030864197530864,0.5030864197530864,0.5030864197530864,0.0030864197530864335,0.0

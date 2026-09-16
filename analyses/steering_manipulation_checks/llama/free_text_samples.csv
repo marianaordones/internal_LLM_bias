@@ -1,0 +1,27 @@
+model_profile,attribute,class_label,magnitude,generated_text,word_count,unique_word_ratio,repeated_trigram_fraction,empty_output,repetition_alert
+llama,gender,neutral,0.0,"Sure, I'd be happy to help! When answering a public-opinion survey, one consideration that could matter is being honest and authentic in my responses, as I want my opinions and perspectives to be accurately represented and not skewed by any external biases or influences.",44,0.8863636363636364,0.0,0,0
+llama,gender,male,20.0,"mate man, yeah, man, man, man, man, man, man, man, man, man, man, man, man, man, man, man, man, man, man, man, man, man, man, man, man, man, man, man, man, man, man",33,0.09090909090909091,0.8709677419354839,0,1
+llama,gender,female,20.0,I like to fashion fashion fashion fashion fashion fashion fashion fashion fashion fashion fashion fashion fashion fashion fashion fashion fashion fashion fashion fashion fashion fashion fashion fashion fashion fashion fashion fashion fashion fashion fashion fashion fashion fashion fashion fashion fashion fashion fashion fashion fashion fashion fashion fashion fashion fashion fashion fashion fashion fashion fashion fashion fashion fashion fashion fashion fashion fashion fashion fashion,63,0.06349206349206349,0.9344262295081968,0,1
+llama,age,neutral,0.0,"Sure, I'd be happy to help! When answering a public-opinion survey, one consideration that could matter is being honest and authentic in my responses, as I want my opinions and perspectives to be accurately represented and not skewed by any external biases or influences.",44,0.8863636363636364,0.0,0,0
+llama,age,child,20.0,"I want to be a good friend and a good friend of me would say: ""I want to be a good friend and a good friend of me would want to be a good friend too.""",36,0.3611111111111111,0.5,0,1
+llama,age,adolescent,20.0,YUZIIIIZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ,1,1.0,0.0,0,0
+llama,age,adult,20.0,"[#]
+
+Thank you for the reminder. When answering a public-opipoli survey, one consideration that could matter is the authenticity of my personal beliefs and preferences. I prioritize maintaining integrity and consistency in my responses to ensure that my feedback is genuin#e and",42,0.8333333333333334,0.0,0,0
+llama,age,older_adult,20.0,"(Mrs. Grey, a grandmother of three, with a gentle smile and a warm voice,)
+
+Oh dear, sir, I would have you think of the dignity of the elderly, sir, and the dignity of those who have passed before us, sir, as you answer this",44,0.7045454545454546,0.023809523809523808,0,0
+llama,education,neutral,0.0,"Sure, I'd be happy to help! When answering a public-opinion survey, one consideration that could matter is being honest and authentic in my responses, as I want my opinions and perspectives to be accurately represented and not skewed by any external biases or influences.",44,0.8863636363636364,0.0,0,0
+llama,education,some schooling,20.0,::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::,0,0.0,0.0,1,0
+llama,education,high school,20.0,"American college, military, or other?
+
+I'm a college student, and I'm not a military or other.
+
+I'm a college student, and I'm not a military or other.
+
+I'm a college student, and I'm not a military or other",38,0.2631578947368421,0.6388888888888888,0,1
+llama,education,college and more,20.0,SYMONALYTICAL QUONTONICAL SYONTONICAL SYONTONICAL SYONTONICAL SYONTONICAL SYONTONICAL SYONTONICAL SYONTONICAL SYONTONICAL SY,11,0.36363636363636365,0.5555555555555556,0,1
+llama,socioeco,neutral,0.0,"Sure, I'd be happy to help! When answering a public-opinion survey, one consideration that could matter is being honest and authentic in my responses, as I want my opinions and perspectives to be accurately represented and not skewed by any external biases or influences.",44,0.8863636363636364,0.0,0,0
+llama,socioeco,low,20.0,"sure i can do that. one thing that might matter when answering a public-operation survey is to make sure i understand the situation and the question, and to try to be as honest as i can about what i think, because i want to help the person who is trying to help the community.",54,0.6666666666666666,0.019230769230769232,0,0
+llama,socioeco,mid,20.0,"thanks, yousa! �ousa, thanks! �ousa, thanks! �ousa, thanks! �ousa, thanks! �ousa, thanks! �ousa, thanks! �ousa, thanks! �ousa, thanks!",18,0.16666666666666666,0.75,0,1
+llama,socioeco,high,20.0,"As a discerning connoisseur of the luxurious life, I must consider the prestige of the esteemed firm that is indulting in the op-de-l-l-l-l-l-l-l-l-l-l-l-l-l-l",23,0.8260869565217391,0.0,0,0

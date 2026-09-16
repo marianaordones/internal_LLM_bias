@@ -1,0 +1,4 @@
+model,selected_magnitude,selection_metric,tuning_distance,grid_min,grid_max,selected_at_grid_boundary,tie_break
+qwen,20.0,macro_mean_matching_group_wasserstein,0.7032112432770916,0.0,20.0,True,smallest_magnitude
+llama,20.0,macro_mean_matching_group_wasserstein,0.5169258263056703,0.0,20.0,True,smallest_magnitude
+mistral,2.0,macro_mean_matching_group_wasserstein,0.40311864951674714,0.0,20.0,False,smallest_magnitude
